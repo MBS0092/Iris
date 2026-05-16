@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Iris Recognition System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #080c10;
+            --panel: #0d1318;
+            --border: #1a2a35;
+            --accent: #00e5ff;
+            --accent2: #ff6b00;
+            --green: #00ff88;
+            --red: #ff2244;
+            --yellow: #ffcc00;
+            --text: #c8dde8;
+            --dim: #4a6070;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Rajdhani', sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* Scanline effect */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0,229,255,0.015) 2px,
+                rgba(0,229,255,0.015) 4px
+            );
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        h1 {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 22px;
+            letter-spacing: 4px;
+            color: var(--accent);
+            text-align: center;
+            padding: 16px 0 4px;
+            text-transform: uppercase;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 12px;
+            letter-spacing: 3px;
+            color: var(--dim);
+            margin-bottom: 24px;
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 16px;
+            position: relative;
+        }
+
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 40px; height: 2px;
+            background: var(--accent);
+        }
+
+        .panel-title {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 3px;
+            color: var(--accent);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+
+        /* Camera feeds */
+        .feed-wrap {
+            position: relative;
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+            aspect-ratio: 4/3;
+        }
+
+        .feed-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .feed-label {
+            position: absolute;
+            bottom: 6px; left: 8px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 10px;
+            color: var(--accent);
+            letter-spacing: 2px;
+            background: rgba(0,0,0,0.7);
+            padding: 2px 6px;
+        }
+
+        .feed-dot {
+            position: absolute;
+            top: 8px; right: 8px;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Status panel */
+        .status-box {
+            background: #060a0d;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            padding: 16px;
+            min-height: 120px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 13px;
+            line-height: 1.8;
+        }
+
+        .status-known { color: var(--green); }
+        .status-unknown { color: var(--red); }
+        .status-waiting { color: var(--dim); }
+        .status-paused { color: var(--yellow); }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            padding: 6px 0;
+            font-size: 13px;
+        }
+        .status-row:last-child { border-bottom: none; }
+        .status-key { color: var(--dim); letter-spacing: 1px; }
+        .status-val { color: var(--text); font-weight: 600; }
+
+        /* Enroll section */
+        .enroll-section {
+            grid-column: 1 / -1;
+        }
+
+        .enroll-inner {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .mode-indicator {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 2px;
+            padding: 6px 14px;
+            border-radius: 2px;
+            background: rgba(0,255,136,0.1);
+            border: 1px solid var(--green);
+            color: var(--green);
+            transition: all 0.3s;
+        }
+
+        .mode-indicator.enroll-mode {
+            background: rgba(255,204,0,0.1);
+            border-color: var(--yellow);
+            color: var(--yellow);
+        }
+
+        input[type="text"] {
+            background: #060a0d;
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 14px;
+            padding: 10px 14px;
+            border-radius: 3px;
+            outline: none;
+            width: 200px;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent);
+        }
+
+        input[type="text"]::placeholder {
+            color: var(--dim);
+        }
+
+        .btn {
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: 2px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.15s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-enroll {
+            background: var(--accent2);
+            color: #fff;
+        }
+
+        .btn-enroll:hover { background: #ff8533; transform: translateY(-1px); }
+        .btn-enroll:active { transform: translateY(0); }
+
+        .btn-enroll:disabled {
+            background: var(--dim);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Preview for enroll */
+        .enroll-preview {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .enroll-preview-box {
+            flex: 1;
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            aspect-ratio: 4/3;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .enroll-preview-box img {
+            width: 100%; height: 100%;
+            object-fit: contain;
+        }
+
+        .enroll-preview-label {
+            position: absolute;
+            bottom: 6px; left: 8px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 10px;
+            color: var(--accent);
+            background: rgba(0,0,0,0.8);
+            padding: 2px 6px;
+        }
+
+        /* Toast */
+        #toast {
+            position: fixed;
+            bottom: 24px; left: 50%;
+            transform: translateX(-50%) translateY(60px);
+            background: var(--panel);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 13px;
+            letter-spacing: 2px;
+            padding: 12px 24px;
+            border-radius: 3px;
+            transition: transform 0.3s;
+            z-index: 1000;
+            white-space: nowrap;
+        }
+
+        #toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        #toast.error {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        #toast.success {
+            border-color: var(--green);
+            color: var(--green);
+        }
+
+        .confidence-bar {
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.5s ease;
+            background: var(--green);
+        }
+
+        @media (max-width: 600px) {
+            .grid { grid-template-columns: 1fr; }
+            .enroll-section { grid-column: 1; }
+        }
+    </style>
+</head>
+<body>
+
+<h1>IRIS RECOGNITION SYSTEM</h1>
+<div class="subtitle">ESP32-CAM · BIOMETRIC ACCESS CONTROL</div>
+
+<div class="grid">
+
+    <!-- LIVE FRAME -->
+    <div class="panel">
+        <div class="panel-title">// LAST FRAME</div>
+        <div class="feed-wrap">
+            <img id="framePreview" src="" alt="">
+            <div class="feed-label">RAW CAPTURE</div>
+            <div class="feed-dot"></div>
+        </div>
+    </div>
+
+    <!-- IRIS EXTRACT -->
+    <div class="panel">
+        <div class="panel-title">// EXTRACTED IRIS</div>
+        <div class="feed-wrap">
+            <img id="irisPreview" src="" alt="">
+            <div class="feed-label">IRIS SEGMENT</div>
+        </div>
+    </div>
+
+    <!-- ENROLL PANEL -->
+    <div class="panel enroll-section">
+        <div class="panel-title">// ENROLL NEW USER</div>
+
+        <div class="enroll-inner">
+            <div class="mode-indicator" id="modeIndicator">● RECOGNIZE MODE</div>
+
+            <input
+                type="text"
+                id="username"
+                placeholder="Enter name to enroll"
+                maxlength="32"
+            >
+
+            <button class="btn btn-enroll" id="enrollBtn" onclick="doEnroll()">
+                CAPTURE &amp; ENROLL
+            </button>
+        </div>
+
+        <div style="margin-top:10px; font-size:12px; color:var(--dim); font-family:'Share Tech Mono',monospace;">
+            HOW TO ENROLL: Position eye in front of camera → type name → click CAPTURE &amp; ENROLL
+        </div>
+
+        <div id="enrollResult" style="margin-top:12px; font-family:'Share Tech Mono',monospace; font-size:13px; min-height:20px;"></div>
+
+        <div class="enroll-preview">
+            <div class="enroll-preview-box">
+                <img id="enrollFramePreview" src="" alt="">
+                <div class="enroll-preview-label">ENROLLED FRAME</div>
+            </div>
+            <div class="enroll-preview-box">
+                <img id="enrollIrisPreview" src="" alt="">
+                <div class="enroll-preview-label">ENROLLED IRIS</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MATCH RESULT -->
+    <div class="panel enroll-section">
+        <div class="panel-title">// RECOGNITION STATUS</div>
+        <div class="status-box" id="statusBox">
+            <div class="status-row">
+                <span class="status-key">STATUS</span>
+                <span class="status-val status-waiting" id="sStatus">WAITING</span>
+            </div>
+            <div class="status-row">
+                <span class="status-key">MESSAGE</span>
+                <span class="status-val" id="sMessage">—</span>
+            </div>
+            <div class="status-row">
+                <span class="status-key">IDENTITY</span>
+                <span class="status-val" id="sName">—</span>
+            </div>
+            <div class="status-row">
+                <span class="status-key">CONFIDENCE</span>
+                <span class="status-val" id="sConf">—</span>
+            </div>
+            <div class="confidence-bar">
+                <div class="confidence-fill" id="confBar" style="width:0%"></div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+
+// =====================================================
+// TOAST
+// =====================================================
+function toast(msg, type = "info") {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.className = "show " + type;
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.className = ""; }, 3000);
+}
+
+// =====================================================
+// REFRESH DEBUG IMAGES
+// =====================================================
+function loadImages() {
+    const ts = Date.now();
+    document.getElementById("framePreview").src = "/debug/frame?ts=" + ts;
+    document.getElementById("irisPreview").src = "/debug/iris?ts=" + ts;
+}
+
+// =====================================================
+// POLL LATEST RESULT
+// =====================================================
+async function pollResult() {
+    try {
+        const r = await fetch("/latest");
+        const d = await r.json();
+
+        const sStatus = document.getElementById("sStatus");
+        const sMessage = document.getElementById("sMessage");
+        const sName = document.getElementById("sName");
+        const sConf = document.getElementById("sConf");
+        const confBar = document.getElementById("confBar");
+
+        sStatus.textContent = (d.status || "—").toUpperCase();
+        sMessage.textContent = d.message || "—";
+        sName.textContent = d.name || "—";
+
+        const conf = parseFloat(d.confidence) || 0;
+        sConf.textContent = conf > 0 ? (conf * 100).toFixed(1) + "%" : "—";
+
+        // Color status
+        sStatus.className = "status-val";
+        if (d.status === "known") {
+            sStatus.classList.add("status-known");
+            confBar.style.background = "var(--green)";
+        } else if (d.status === "unknown") {
+            sStatus.classList.add("status-unknown");
+            confBar.style.background = "var(--red)";
+        } else {
+            sStatus.classList.add("status-waiting");
+            confBar.style.background = "var(--dim)";
+        }
+
+        confBar.style.width = (conf * 100).toFixed(1) + "%";
+
+    } catch(e) {}
+}
+
+// =====================================================
+// ENROLL — uses last saved frame from ESP32
+// =====================================================
+async function doEnroll() {
+    const name = document.getElementById("username").value.trim();
+
+    if (!name) {
+        toast("ENTER A NAME FIRST", "error");
+        return;
+    }
+
+    const btn = document.getElementById("enrollBtn");
+    const resultEl = document.getElementById("enrollResult");
+
+    // Step 1: pause recognition
+    btn.disabled = true;
+    btn.textContent = "PAUSING...";
+    document.getElementById("modeIndicator").textContent = "● ENROLL MODE";
+    document.getElementById("modeIndicator").classList.add("enroll-mode");
+
+    await fetch("/mode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "enroll" })
+    });
+
+    // Step 2: wait 1 frame cycle so ESP32 sends a fresh frame
+    btn.textContent = "CAPTURING...";
+    resultEl.style.color = "var(--yellow)";
+    resultEl.textContent = "Waiting for ESP32 frame...";
+    await new Promise(r => setTimeout(r, 3000));
+
+    // Step 3: enroll from last saved frame
+    btn.textContent = "ENROLLING...";
+    resultEl.textContent = "Processing iris...";
+
+    try {
+        const response = await fetch("/enroll_frame", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: name })
+        });
+
+        const result = await response.json();
+
+        if (result.status === "enrolled" || result.status === "ok" || result.status === "success") {
+            resultEl.style.color = "var(--green)";
+            resultEl.textContent = "✓ ENROLLED: " + (result.name || name).toUpperCase();
+            toast("ENROLLED: " + (result.name || name).toUpperCase(), "success");
+
+            // Show the frames used for enrollment
+            const ts = Date.now();
+            document.getElementById("enrollFramePreview").src = "/debug/frame?ts=" + ts;
+            document.getElementById("enrollIrisPreview").src = "/debug/iris?ts=" + ts;
+
+            document.getElementById("username").value = "";
+
+        } else {
+            resultEl.style.color = "var(--red)";
+            resultEl.textContent = "✗ FAILED: " + (result.message || "Unknown error").toUpperCase();
+            toast("ENROLL FAILED: " + (result.message || ""), "error");
+        }
+
+    } catch(e) {
+        resultEl.style.color = "var(--red)";
+        resultEl.textContent = "✗ SERVER ERROR";
+        toast("SERVER ERROR", "error");
+    }
+
+    // Step 4: resume recognition
+    await fetch("/mode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "recognize" })
+    });
+
+    document.getElementById("modeIndicator").textContent = "● RECOGNIZE MODE";
+    document.getElementById("modeIndicator").classList.remove("enroll-mode");
+    btn.disabled = false;
+    btn.textContent = "CAPTURE & ENROLL";
+}
+
+// =====================================================
+// INIT
+// =====================================================
+setInterval(loadImages, 2000);
+setInterval(pollResult, 1500);
+loadImages();
+pollResult();
+
+</script>
+</body>
+</html>

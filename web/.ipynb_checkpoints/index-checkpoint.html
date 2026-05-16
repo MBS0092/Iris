@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Iris Recognition</title>
+
+    <style>
+
+        body{
+            font-family: Arial;
+            text-align:center;
+            margin-top:30px;
+        }
+
+        video{
+            border:2px solid black;
+            border-radius:10px;
+            background:black;
+        }
+
+        button{
+            margin:10px;
+            padding:10px 20px;
+            font-size:16px;
+        }
+
+        input{
+            padding:8px;
+            font-size:16px;
+        }
+
+        #result{
+            margin-top:20px;
+            font-size:20px;
+            white-space:pre-wrap;
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <h1>Iris Recognition</h1>
+
+    <video
+        id="video"
+        width="400"
+        height="300"
+        autoplay
+        playsinline
+        muted>
+    </video>
+
+    <canvas
+        id="canvas"
+        width="400"
+        height="300"
+        style="display:none;">
+    </canvas>
+
+    <br><br>
+
+    <input
+        type="text"
+        id="username"
+        placeholder="Enter Name">
+
+    <br>
+
+    <button onclick="enroll()">
+        Enroll
+    </button>
+
+    <button onclick="recognize()">
+        Recognize
+    </button>
+
+    <div id="result"></div>
+
+<script>
+
+console.log("SCRIPT LOADED");
+
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+async function startCamera() {
+
+    console.log("START CAMERA CALLED");
+
+    try {
+
+        const stream =
+            await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: false
+            });
+
+        console.log("STREAM RECEIVED");
+
+        video.srcObject = stream;
+
+        await video.play();
+
+        console.log("VIDEO PLAYING");
+
+    }
+    catch(err) {
+
+        console.error(err);
+
+        alert("Camera error: " + err);
+
+    }
+}
+
+function captureImage(){
+
+    ctx.drawImage(
+        video,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    return new Promise(resolve=>{
+
+        canvas.toBlob(blob=>{
+
+            resolve(blob);
+
+        }, "image/jpeg");
+    });
+}
+
+async function enroll(){
+
+    const blob = await captureImage();
+
+    const formData = new FormData();
+
+    formData.append("image", blob);
+
+    formData.append(
+        "name",
+        document.getElementById("username").value
+    );
+
+    const response = await fetch("/enroll",{
+        method:"POST",
+        body:formData
+    });
+
+    const result = await response.json();
+
+    document.getElementById("result").innerHTML =
+        JSON.stringify(result, null, 2);
+}
+
+async function recognize(){
+
+    const blob = await captureImage();
+
+    const formData = new FormData();
+
+    formData.append("image", blob);
+
+    const response = await fetch("/upload",{
+        method:"POST",
+        body:formData
+    });
+
+    const result = await response.json();
+
+    document.getElementById("result").innerHTML =
+        JSON.stringify(result, null, 2);
+}
+
+startCamera();
+
+</script>
+
+</body>
+</html>
