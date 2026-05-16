@@ -170,7 +170,7 @@ def start_serial():
             print(f"[Serial] Connected: {SERIAL_PORT}")
             threading.Thread(target=serial_reader, daemon=True).start()
         else:
-            print("[Serial] Skipped (cloud environment)")
+            print("[Serial] Skipped (cloud environment)") 
     except Exception as e:
         print(f"[Serial] Cannot open port: {e}")
         err = str(e).lower()
