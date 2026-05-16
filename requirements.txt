@@ -11,5 +11,4 @@ scipy>=1.10.0
 pyserial
 pillow
 scikit-image
-python==3.10.13
 tensorflow==2.15.0
