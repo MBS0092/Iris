@@ -164,12 +164,15 @@ def enroll_from_last_frame(name: str) -> dict:
 def start_serial():
     global ser
     try:
-        ser = serial.Serial(SERIAL_PORT, SERIAL_BAUD, timeout=1)
-        time.sleep(2)
-        print(f"[Serial] Connected: {SERIAL_PORT}")
-        threading.Thread(target=serial_reader, daemon=True).start()
+        if os.name == "nt":   # Windows local only
+            ser = serial.Serial(SERIAL_PORT, SERIAL_BAUD, timeout=1)
+            time.sleep(2)
+            print(f"[Serial] Connected: {SERIAL_PORT}")
+            threading.Thread(target=serial_reader, daemon=True).start()
+        else:
+            print("[Serial] Skipped (cloud environment)")
     except Exception as e:
-        print(f"[Serial] Cannot open {SERIAL_PORT}: {e}")
+        print(f"[Serial] Cannot open port: {e}")
         err = str(e).lower()
         if "access is denied" in err or "permissionerror" in err or "permission denied" in err:
             print(
@@ -375,5 +378,3 @@ def home():
 
 if __name__ == "__main__":
     start_serial()
-    print("Server running on http://0.0.0.0:5000")
-    app.run(host="0.0.0.0", port=5000, debug=False)
