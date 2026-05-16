@@ -11,3 +11,4 @@ scipy>=1.10.0
 pyserial
 pillow
 scikit-image
+tensorflow-cpu
